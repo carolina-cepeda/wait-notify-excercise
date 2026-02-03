@@ -9,17 +9,29 @@ public class PrimeFinderThread extends Thread{
 	int a,b;
 	
 	private List<Integer> primes;
+	private volatile boolean paused = false;
+	private final Object pauseLock = new Object();
 	
 	public PrimeFinderThread(int a, int b) {
 		super();
-                this.primes = new LinkedList<>();
+    	this.primes = new LinkedList<>();
 		this.a = a;
 		this.b = b;
 	}
 
         @Override
 	public void run(){
-            for (int i= a;i < b;i++){						
+            for (int i= a;i < b;i++){
+                synchronized(pauseLock) {
+                    while(paused) {
+                        try {
+                            pauseLock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
                 if (isPrime(i)){
                     primes.add(i);
                     System.out.println(i);
@@ -42,6 +54,26 @@ public class PrimeFinderThread extends Thread{
 
 	public List<Integer> getPrimes() {
 		return primes;
+	}
+
+	public synchronized int getPrimesFound() {
+    return primes.size();
+	}
+
+	
+	public void pauseThread() {
+		synchronized(pauseLock) {
+			paused = true;
+			pauseLock.notifyAll();
+
+		}
+	}
+	
+	public void resumeThread() {
+		synchronized(pauseLock) {
+			paused = false;
+			pauseLock.notifyAll();
+		}
 	}
 	
 }
